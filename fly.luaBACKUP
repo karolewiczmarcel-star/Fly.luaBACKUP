@@ -1,5 +1,5 @@
 --[[
-    GUI Z KLIKANIEM – Fly, Noclip, ESP
+    GUI W COREGUI – KLIKANIE DZIAŁA
 ]]
 
 local player = game.Players.LocalPlayer
@@ -10,6 +10,7 @@ local camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 -- ===== STANY =====
 local flying = false
@@ -28,7 +29,7 @@ local ESP_RANGE = 500
 
 local menuOpen = false
 local menuGui = nil
-local toggleButtons = {}
+local watermarkGui = nil
 
 -- ===== FUNKCJE =====
 local function startFly()
@@ -220,6 +221,52 @@ local function disableESP()
     roleMemory = {}
 end
 
+-- ===== WATERMARK =====
+local function createWatermark()
+    if watermarkGui then return end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KapitanBombaWatermark"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "WatermarkFrame"
+    frame.Size = UDim2.new(0, 420, 0, 60)
+    frame.Position = UDim2.new(1, -430, 0, 2)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 0, 0)
+    stroke.Thickness = 3
+    stroke.Transparency = 0.15
+    stroke.Parent = frame
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "WatermarkLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "🔥 KapitanBomba HACK 🔥"
+    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    textLabel.TextSize = 34
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.2
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Parent = frame
+    
+    watermarkGui = screenGui
+    print("[WATERMARK] KapitanBomba HACK dodany")
+end
+
 -- ===== GUI =====
 local function createToggleButton(parent, text, yPos, getState, setState)
     local btn = Instance.new("TextButton")
@@ -231,19 +278,13 @@ local function createToggleButton(parent, text, yPos, getState, setState)
     btn.TextSize = 14
     btn.Font = Enum.Font.GothamBold
     btn.Parent = parent
+    btn.AutoButtonColor = false
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
     
-    -- Podwójne zdarzenie dla większej kompatybilności
-    btn.MouseButton1Click:Connect(function()
-        local newState = not getState()
-        setState(newState)
-        btn.BackgroundColor3 = newState and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-        btn.Text = text .. ": " .. (newState and "ON" or "OFF")
-    end)
-    
+    -- TYLKO Activated (działa zawsze)
     btn.Activated:Connect(function()
         local newState = not getState()
         setState(newState)
@@ -251,25 +292,21 @@ local function createToggleButton(parent, text, yPos, getState, setState)
         btn.Text = text .. ": " .. (newState and "ON" or "OFF")
     end)
     
-    table.insert(toggleButtons, btn)
     return btn
 end
 
 local function updateButtons()
-    for _, btn in ipairs(toggleButtons) do
-        -- Aktualizacja odbywa się przez referencje
-    end
-    -- Ręczna aktualizacja dla Fly
-    for _, btn in ipairs(toggleButtons) do
-        if btn.Text:find("Fly") then
-            btn.BackgroundColor3 = flying and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            btn.Text = "Fly: " .. (flying and "ON" or "OFF")
-        elseif btn.Text:find("Noclip") then
-            btn.BackgroundColor3 = noclip and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            btn.Text = "Noclip: " .. (noclip and "ON" or "OFF")
-        elseif btn.Text:find("ESP") then
-            btn.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            btn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    if not menuGui then return end
+    for _, child in ipairs(menuGui.Frame:GetChildren()) do
+        if child:IsA("TextButton") and child.Text:find("Fly") then
+            child.BackgroundColor3 = flying and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
+            child.Text = "Fly: " .. (flying and "ON" or "OFF")
+        elseif child:IsA("TextButton") and child.Text:find("Noclip") then
+            child.BackgroundColor3 = noclip and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
+            child.Text = "Noclip: " .. (noclip and "ON" or "OFF")
+        elseif child:IsA("TextButton") and child.Text:find("ESP") then
+            child.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
+            child.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
         end
     end
 end
@@ -280,7 +317,7 @@ local function createMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "KapitanBombaMenu"
     screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.Parent = CoreGui
     
     local frame = Instance.new("Frame")
     frame.Name = "MenuFrame"
@@ -321,14 +358,10 @@ local function createMenu()
     closeBtn.TextSize = 16
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Parent = frame
-    closeBtn.MouseButton1Click:Connect(function()
-        toggleMenu()
-    end)
     closeBtn.Activated:Connect(function()
         toggleMenu()
     end)
     
-    -- Przyciski
     createToggleButton(frame, "Fly", 38, function() return flying end, function(val)
         if val then
             if not flying then startFly() end
@@ -408,7 +441,8 @@ player.CharacterAdded:Connect(function(newChar)
 end)
 
 -- ===== START =====
+createWatermark()
 createMenu()
-print("=== GUI ZAŁADOWANE ===")
+print("=== GUI + WATERMARK ZAŁADOWANE ===")
 print("K = otwórz/zamknij menu")
 print("Klikaj w przyciski, żeby przełączać")
