@@ -1,5 +1,5 @@
 --[[
-    MENU POD K – DZIAŁA NA WSZYSTKICH EXECUTORACH
+    MENU POD K – STEROWANIE KLAWISZAMI 1, 2, 3
 ]]
 
 local player = game.Players.LocalPlayer
@@ -278,7 +278,7 @@ local function disableESP()
     roleMemory = {}
 end
 
--- ===== MENU =====
+-- ===== MENU (TYLKO WIZUALNE) =====
 local function createMenu()
     if menuGui then return end
     
@@ -289,8 +289,8 @@ local function createMenu()
     
     local frame = Instance.new("Frame")
     frame.Name = "MenuFrame"
-    frame.Size = UDim2.new(0, 240, 0, 200)
-    frame.Position = UDim2.new(0.5, -120, 0.5, -100)
+    frame.Size = UDim2.new(0, 280, 0, 200)
+    frame.Position = UDim2.new(0.5, -140, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
     frame.BackgroundTransparency = 0.15
     frame.BorderSizePixel = 0
@@ -330,78 +330,88 @@ local function createMenu()
         toggleMenu()
     end)
     
-    local function createToggle(parent, text, yPos, getState, setState)
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, -20, 0, 36)
-        row.Position = UDim2.new(0, 10, 0, yPos)
-        row.BackgroundTransparency = 1
-        row.Parent = parent
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.5, 0, 1, 0)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextSize = 15
-        label.Font = Enum.Font.GothamBold
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = row
-        
-        local toggleBtn = Instance.new("TextButton")
-        toggleBtn.Size = UDim2.new(0, 70, 0, 28)
-        toggleBtn.Position = UDim2.new(1, -80, 0.5, -14)
-        toggleBtn.BackgroundColor3 = getState() and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-        toggleBtn.Text = getState() and "ON" or "OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleBtn.TextSize = 13
-        toggleBtn.Font = Enum.Font.GothamBold
-        toggleBtn.Parent = row
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = toggleBtn
-        
-        toggleBtn.Activated:Connect(function()
-            local newState = not getState()
-            setState(newState)
-            toggleBtn.BackgroundColor3 = newState and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-            toggleBtn.Text = newState and "ON" or "OFF"
-        end)
-        
-        return row
-    end
-    
-    createToggle(frame, "Fly", 38, function() return flying end, function(val)
-        if val then
-            if not flying then startFly() end
-        else
-            if flying then stopFly() end
-        end
-    end)
-    
-    createToggle(frame, "Noclip", 78, function() return noclip end, function(val)
-        if val then
-            if not noclip then toggleNoclip() end
-        else
-            if noclip then toggleNoclip() end
-        end
-    end)
-    
-    createToggle(frame, "ESP", 118, function() return espEnabled end, function(val)
-        if val then
-            if not espEnabled then enableESP() end
-        else
-            if espEnabled then disableESP() end
-        end
-    end)
+    -- Informacje o klawiszach
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, -20, 0, 100)
+    info.Position = UDim2.new(0, 10, 0, 40)
+    info.BackgroundTransparency = 1
+    info.Text = "[1] Fly: OFF\n[2] Noclip: OFF\n[3] ESP: OFF\n\nK = zamknij"
+    info.TextColor3 = Color3.fromRGB(200, 200, 200)
+    info.TextSize = 14
+    info.Font = Enum.Font.GothamBold
+    info.TextXAlignment = Enum.TextXAlignment.Left
+    info.TextYAlignment = Enum.TextYAlignment.Top
+    info.Parent = frame
     
     menuGui = {
         Frame = frame,
-        ScreenGui = screenGui
+        ScreenGui = screenGui,
+        InfoLabel = info
     }
 end
 
+-- ===== OBSŁUGA KLAWISZY W MENU =====
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    
+    -- K = otwórz/zamknij menu
+    if input.KeyCode == Enum.KeyCode.K then
+        toggleMenu()
+        return
+    end
+    
+    -- Jeśli menu jest zamknięte, ignoruj 1,2,3
+    if not menuOpen then return end
+    
+    -- 1 = Fly
+    if input.KeyCode == Enum.KeyCode.One then
+        if flying then
+            stopFly()
+            print("[FLY] OFF")
+        else
+            startFly()
+            print("[FLY] ON")
+        end
+        updateMenuInfo()
+        return
+    end
+    
+    -- 2 = Noclip
+    if input.KeyCode == Enum.KeyCode.Two then
+        toggleNoclip()
+        updateMenuInfo()
+        return
+    end
+    
+    -- 3 = ESP
+    if input.KeyCode == Enum.KeyCode.Three then
+        if espEnabled then
+            disableESP()
+            print("[ESP] OFF")
+        else
+            enableESP()
+            print("[ESP] ON")
+        end
+        updateMenuInfo()
+        return
+    end
+end)
+
+-- ===== AKTUALIZACJA INFO W MENU =====
+local function updateMenuInfo()
+    if not menuGui or not menuGui.InfoLabel then return end
+    
+    local flyState = flying and "ON" or "OFF"
+    local noclipState = noclip and "ON" or "OFF"
+    local espState = espEnabled and "ON" or "OFF"
+    
+    menuGui.InfoLabel.Text = string.format(
+        "[1] Fly: %s\n[2] Noclip: %s\n[3] ESP: %s\n\nK = zamknij",
+        flyState, noclipState, espState
+    )
+end
+
+-- ===== OTWIERANIE/ZAMYKANIE MENU =====
 local function toggleMenu()
     if not menuGui then
         createMenu()
@@ -410,19 +420,11 @@ local function toggleMenu()
     menuGui.Frame.Visible = menuOpen
     if menuOpen then
         print("[MENU] Otwarto")
+        updateMenuInfo()
     else
         print("[MENU] Zamknięto")
     end
 end
-
--- ===== KLAWISZ K =====
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    
-    if input.KeyCode == Enum.KeyCode.K then
-        toggleMenu()
-    end
-end)
 
 -- ===== RESPAWN =====
 player.CharacterAdded:Connect(function(newChar)
@@ -455,5 +457,5 @@ createWatermark()
 createMenu()
 
 print("=== MENU ZAŁADOWANE ===")
-print("Naciśnij K, aby otworzyć/zamknąć menu")
-print("Przełączniki: Fly, Noclip, ESP")
+print("K = otwórz/zamknij menu")
+print("1 = Fly | 2 = Noclip | 3 = ESP")
