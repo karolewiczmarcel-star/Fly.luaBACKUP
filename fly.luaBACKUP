@@ -1,7 +1,12 @@
 --[[
-    GUI W COREGUI – KLIKANIE DZIAŁA
+    IRIS MENU – FLY (X) + NOCLIP (Z) + ESP (C) + RAINBOW COLORS
 ]]
 
+-- ===== ZAŁADOWANIE IRIS =====
+local Iris = loadstring(game:HttpGet("https://raw.githubusercontent.com/paradoxum-games/iris/main/out.lua"))()
+Iris:Init()
+
+-- ===== STANY =====
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
@@ -10,34 +15,33 @@ local camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
 
--- ===== STANY =====
+-- ===== FLY =====
 local flying = false
 local flyCon = nil
 local flySpeed = 50
 
+-- ===== NOCLIP =====
 local noclip = false
 local noclipCon = nil
 
+-- ===== ESP =====
 local espEnabled = false
 local espCon = nil
 local espCache = {}
-local roleMemory = {}
-local ESP_REFRESH = 2
+local ESP_REFRESH = 0.5
 local ESP_RANGE = 500
 
-local menuOpen = false
-local menuGui = nil
-local watermarkGui = nil
+-- ===== IRIS STANY =====
+local menuVisible = Iris.State(true)
+local hue = 0
 
--- ===== FUNKCJE =====
+-- ===== FLY =====
 local function startFly()
     if flying then return end
     flying = true
     workspace.Gravity = 0
     print("[FLY] ON")
-    updateButtons()
     
     flyCon = RunService.Heartbeat:Connect(function()
         if not flying then return end
@@ -77,9 +81,9 @@ local function stopFly()
     end
     workspace.Gravity = 196.2
     print("[FLY] OFF")
-    updateButtons()
 end
 
+-- ===== NOCLIP =====
 local function toggleNoclip()
     noclip = not noclip
     if noclip then
@@ -105,7 +109,31 @@ local function toggleNoclip()
             end
         end
     end
-    updateButtons()
+end
+
+-- ===== ESP =====
+local function findActiveWeapon(char)
+    if not char then return nil, nil end
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then
+            local handle = child:FindFirstChild("Handle")
+            if handle then
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local dist = (handle.Position - root.Position).Magnitude
+                    if dist < 3 then
+                        local name = child.Name:lower()
+                        if name:find("knife") or name:find("dagger") or name:find("blade") or name:find("scythe") or name:find("sword") or name:find("axe") or name:find("machete") or name:find("katana") then
+                            return "knife", child
+                        elseif name:find("gun") or name:find("pistol") or name:find("revolver") or name:find("rifle") or name:find("shotgun") or name:find("sniper") then
+                            return "gun", child
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil, nil
 end
 
 local function updateESP()
@@ -123,31 +151,13 @@ local function updateESP()
         end
         
         local color = nil
+        local weaponType, weapon = findActiveWeapon(char)
         
-        for _, child in ipairs(char:GetDescendants()) do
-            if child:IsA("Tool") then
-                local name = child.Name:lower()
-                if name:find("knife") or name:find("dagger") or name:find("blade") or name:find("scythe") or name:find("sword") or name:find("axe") then
-                    color = Color3.fromRGB(255, 0, 0)
-                    roleMemory[target] = "murderer"
-                    break
-                elseif name:find("gun") or name:find("pistol") or name:find("revolver") or name:find("rifle") or name:find("shotgun") then
-                    color = Color3.fromRGB(0, 128, 255)
-                    roleMemory[target] = "sheriff"
-                    break
-                end
-            end
-        end
-        
-        if not color and roleMemory[target] then
-            if roleMemory[target] == "murderer" then
-                color = Color3.fromRGB(255, 0, 0)
-            elseif roleMemory[target] == "sheriff" then
-                color = Color3.fromRGB(0, 128, 255)
-            end
-        end
-        
-        if not color then
+        if weaponType == "knife" then
+            color = Color3.fromRGB(255, 0, 0)
+        elseif weaponType == "gun" then
+            color = Color3.fromRGB(0, 128, 255)
+        else
             local root = char:FindFirstChild("HumanoidRootPart")
             if root and player.Character then
                 local playerRoot = player.Character:FindFirstChild("HumanoidRootPart")
@@ -190,7 +200,6 @@ local function enableESP()
     if espEnabled then return end
     espEnabled = true
     print("[ESP] ON")
-    updateButtons()
     
     updateESP()
     espCon = RunService.Heartbeat:Connect(function()
@@ -207,7 +216,6 @@ local function disableESP()
     if not espEnabled then return end
     espEnabled = false
     print("[ESP] OFF")
-    updateButtons()
     
     if espCon then
         espCon:Disconnect()
@@ -218,199 +226,98 @@ local function disableESP()
         pcall(h.Destroy, h)
     end
     espCache = {}
-    roleMemory = {}
 end
 
--- ===== WATERMARK =====
-local function createWatermark()
-    if watermarkGui then return end
+-- ===== IRIS MENU Z RAINBOW =====
+local function createIrisMenu()
+    -- Ukryj domyślny kursor
+    UserInputService.MouseIconEnabled = false
     
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "KapitanBombaWatermark"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "WatermarkFrame"
-    frame.Size = UDim2.new(0, 420, 0, 60)
-    frame.Position = UDim2.new(1, -430, 0, 2)
-    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    frame.BackgroundTransparency = 0.5
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 0, 0)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.15
-    stroke.Parent = frame
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "WatermarkLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "🔥 KapitanBomba HACK 🔥"
-    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-    textLabel.TextSize = 34
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextStrokeTransparency = 0.2
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.TextXAlignment = Enum.TextXAlignment.Center
-    textLabel.TextYAlignment = Enum.TextYAlignment.Center
-    textLabel.Parent = frame
-    
-    watermarkGui = screenGui
-    print("[WATERMARK] KapitanBomba HACK dodany")
-end
-
--- ===== GUI =====
-local function createToggleButton(parent, text, yPos, getState, setState)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.8, 0, 0, 32)
-    btn.Position = UDim2.new(0.1, 0, 0, yPos)
-    btn.BackgroundColor3 = getState() and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-    btn.Text = text .. ": " .. (getState() and "ON" or "OFF")
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = parent
-    btn.AutoButtonColor = false
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-    
-    -- TYLKO Activated (działa zawsze)
-    btn.Activated:Connect(function()
-        local newState = not getState()
-        setState(newState)
-        btn.BackgroundColor3 = newState and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-        btn.Text = text .. ": " .. (newState and "ON" or "OFF")
-    end)
-    
-    return btn
-end
-
-local function updateButtons()
-    if not menuGui then return end
-    for _, child in ipairs(menuGui.Frame:GetChildren()) do
-        if child:IsA("TextButton") and child.Text:find("Fly") then
-            child.BackgroundColor3 = flying and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            child.Text = "Fly: " .. (flying and "ON" or "OFF")
-        elseif child:IsA("TextButton") and child.Text:find("Noclip") then
-            child.BackgroundColor3 = noclip and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            child.Text = "Noclip: " .. (noclip and "ON" or "OFF")
-        elseif child:IsA("TextButton") and child.Text:find("ESP") then
-            child.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(180, 0, 0)
-            child.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    Iris:Connect(function()
+        -- Generowanie koloru (zmiana co sekundę)
+        hue = (hue + 0.016) % 1 -- 1/60 ≈ 0.016
+        local rainbowColor = Color3.fromHSV(hue, 1, 1)
+        
+        -- Główne okno
+        Iris.Window({ "KapitanBomba HACK" }, { 
+            size = Iris.State(Vector2.new(300, 350)),
+            position = Iris.State(Vector2.new(100, 100))
+        })
+        
+        -- Tytuł z rainbow
+        Iris.Text({ "⚡ STEERING ⚡" })
+        Iris.Separator()
+        
+        -- FLY
+        local flyState = Iris.State(flying)
+        Iris.Checkbox({ "Fly (X)", flyState })
+        if flyState:get() ~= flying then
+            if flyState:get() then
+                startFly()
+            else
+                stopFly()
+            end
         end
-    end
+        
+        -- NOCLIP
+        local noclipState = Iris.State(noclip)
+        Iris.Checkbox({ "Noclip (Z)", noclipState })
+        if noclipState:get() ~= noclip then
+            toggleNoclip()
+        end
+        
+        -- ESP
+        local espState = Iris.State(espEnabled)
+        Iris.Checkbox({ "ESP (C)", espState })
+        if espState:get() ~= espEnabled then
+            if espState:get() then
+                enableESP()
+            else
+                disableESP()
+            end
+        end
+        
+        Iris.Separator()
+        
+        -- Status z rainbow
+        Iris.Text({ "STATUS:" })
+        Iris.Text({ "Fly: " .. (flying and "✅ ON" or "❌ OFF") })
+        Iris.Text({ "Noclip: " .. (noclip and "✅ ON" or "❌ OFF") })
+        Iris.Text({ "ESP: " .. (espEnabled and "✅ ON" or "❌ OFF") })
+        
+        Iris.Separator()
+        
+        -- Przycisk wyjścia z rainbow
+        local exitBtn = Iris.Button({ "❌ WYJDŹ" })
+        if exitBtn then
+            menuVisible:set(false)
+        end
+        
+        Iris.End()
+        
+        -- Zmiana koloru co sekundę (w tle)
+        task.wait(0.1)
+    end)
 end
 
-local function createMenu()
-    if menuGui then return end
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "KapitanBombaMenu"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "MenuFrame"
-    frame.Size = UDim2.new(0, 240, 0, 180)
-    frame.Position = UDim2.new(0.5, -120, 0.5, -90)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    frame.BackgroundTransparency = 0.1
-    frame.BorderSizePixel = 0
-    frame.Visible = false
-    frame.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 0, 0)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "🔥 KapitanBomba HACK"
-    title.TextColor3 = Color3.fromRGB(255, 0, 0)
-    title.TextSize = 15
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 26, 0, 26)
-    closeBtn.Position = UDim2.new(1, -30, 0, 2)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-    closeBtn.TextSize = 16
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = frame
-    closeBtn.Activated:Connect(function()
-        toggleMenu()
-    end)
-    
-    createToggleButton(frame, "Fly", 38, function() return flying end, function(val)
-        if val then
-            if not flying then startFly() end
-        else
-            if flying then stopFly() end
-        end
-    end)
-    
-    createToggleButton(frame, "Noclip", 78, function() return noclip end, function(val)
-        if val then
-            if not noclip then toggleNoclip() end
-        else
-            if noclip then toggleNoclip() end
-        end
-    end)
-    
-    createToggleButton(frame, "ESP", 118, function() return espEnabled end, function(val)
-        if val then
-            if not espEnabled then enableESP() end
-        else
-            if espEnabled then disableESP() end
-        end
-    end)
-    
-    menuGui = {
-        Frame = frame,
-        ScreenGui = screenGui
-    }
-end
-
-local function toggleMenu()
-    if not menuGui then
-        createMenu()
-    end
-    menuOpen = not menuOpen
-    menuGui.Frame.Visible = menuOpen
-    if menuOpen then
-        print("[MENU] Otwarto")
-        updateButtons()
-    else
-        print("[MENU] Zamknięto")
-    end
-end
-
--- ===== KLAWISZ K =====
+-- ===== KLAWISZE =====
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.K then
-        toggleMenu()
+    
+    if input.KeyCode == Enum.KeyCode.X then
+        if flying then stopFly() else startFly() end
+    end
+    
+    if input.KeyCode == Enum.KeyCode.Z then
+        toggleNoclip()
+    end
+    
+    if input.KeyCode == Enum.KeyCode.C then
+        if espEnabled then disableESP() else enableESP() end
+    end
+    
+    if input.KeyCode == Enum.KeyCode.J then
+        menuVisible:set(not menuVisible:get())
     end
 end)
 
@@ -441,8 +348,9 @@ player.CharacterAdded:Connect(function(newChar)
 end)
 
 -- ===== START =====
-createWatermark()
-createMenu()
-print("=== GUI + WATERMARK ZAŁADOWANE ===")
-print("K = otwórz/zamknij menu")
-print("Klikaj w przyciski, żeby przełączać")
+createIrisMenu()
+
+print("=== IRIS MENU ZAŁADOWANE ===")
+print("X = FLY | Z = NOCLIP | C = ESP")
+print("J = pokaż/ukryj menu")
+print("🌈 Kolory zmieniają się co sekundę!")
