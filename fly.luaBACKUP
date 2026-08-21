@@ -1,7 +1,5 @@
 --[[
-    FINAL VERSION – MENU POD K
-    K = otwiera/zamyka menu
-    Przełączniki: Fly, Noclip, ESP
+    MENU POD K – DZIAŁA NA WSZYSTKICH EXECUTORACH
 ]]
 
 local player = game.Players.LocalPlayer
@@ -12,6 +10,24 @@ local camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+
+-- ===== STANY =====
+local flying = false
+local flyCon = nil
+local flySpeed = 50
+
+local noclip = false
+local noclipCon = nil
+
+local espEnabled = false
+local espCon = nil
+local espCache = {}
+local roleMemory = {}
+local ESP_REFRESH = 2
+local ESP_RANGE = 500
+
+local menuOpen = false
+local menuGui = nil
 
 -- ===== WATERMARK =====
 local function createWatermark()
@@ -69,152 +85,7 @@ local function createWatermark()
     print("[WATERMARK] KapitanBomba HACK dodany")
 end
 
--- ===== MENU =====
-local menuOpen = false
-local menuGui = nil
-
-local function createMenu()
-    if menuGui then return end
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "KapitanBombaMenu"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = game:GetService("CoreGui")
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "MenuFrame"
-    frame.Size = UDim2.new(0, 220, 0, 160)
-    frame.Position = UDim2.new(0.5, -110, 0.5, -80)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 0.2
-    frame.BorderSizePixel = 0
-    frame.Visible = false
-    frame.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 0, 0)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.3
-    stroke.Parent = frame
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "🔥 KapitanBomba HACK"
-    title.TextColor3 = Color3.fromRGB(255, 0, 0)
-    title.TextSize = 16
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -30, 0, 3)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    closeBtn.TextSize = 16
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = frame
-    closeBtn.MouseButton1Click:Connect(function()
-        toggleMenu()
-    end)
-    
-    local function createToggle(parent, text, yPos, getState, setState)
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, -20, 0, 30)
-        row.Position = UDim2.new(0, 10, 0, yPos)
-        row.BackgroundTransparency = 1
-        row.Parent = parent
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.6, 0, 1, 0)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextSize = 14
-        label.Font = Enum.Font.GothamBold
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = row
-        
-        local toggleBtn = Instance.new("TextButton")
-        toggleBtn.Size = UDim2.new(0, 60, 0, 24)
-        toggleBtn.Position = UDim2.new(1, -70, 0.5, -12)
-        toggleBtn.BackgroundColor3 = getState() and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-        toggleBtn.Text = getState() and "ON" or "OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleBtn.TextSize = 12
-        toggleBtn.Font = Enum.Font.GothamBold
-        toggleBtn.Parent = row
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = toggleBtn
-        
-        toggleBtn.MouseButton1Click:Connect(function()
-            local newState = not getState()
-            setState(newState)
-            toggleBtn.BackgroundColor3 = newState and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-            toggleBtn.Text = newState and "ON" or "OFF"
-        end)
-        
-        return row
-    end
-    
-    -- Tworzymy przełączniki
-    createToggle(frame, "Fly", 35, function() return flying end, function(val)
-        if val then
-            if not flying then startFly() end
-        else
-            if flying then stopFly() end
-        end
-    end)
-    
-    createToggle(frame, "Noclip", 70, function() return noclip end, function(val)
-        if val then
-            if not noclip then toggleNoclip() end
-        else
-            if noclip then toggleNoclip() end
-        end
-    end)
-    
-    createToggle(frame, "ESP", 105, function() return espEnabled end, function(val)
-        if val then
-            if not espEnabled then enableESP() end
-        else
-            if espEnabled then disableESP() end
-        end
-    end)
-    
-    menuGui = {
-        Frame = frame,
-        ScreenGui = screenGui
-    }
-end
-
-local function toggleMenu()
-    if not menuGui then
-        createMenu()
-    end
-    menuOpen = not menuOpen
-    menuGui.Frame.Visible = menuOpen
-    if menuOpen then
-        print("[MENU] Otwarto")
-    else
-        print("[MENU] Zamknięto")
-    end
-end
-
 -- ===== FLY =====
-local flying = false
-local flyCon = nil
-local flySpeed = 50
-
 local function startFly()
     if flying then return end
     flying = true
@@ -260,9 +131,6 @@ local function stopFly()
 end
 
 -- ===== NOCLIP =====
-local noclip = false
-local noclipCon = nil
-
 local function toggleNoclip()
     noclip = not noclip
     if noclip then
@@ -291,13 +159,6 @@ local function toggleNoclip()
 end
 
 -- ===== ESP =====
-local espEnabled = false
-local espCon = nil
-local espCache = {}
-local roleMemory = {}
-local ESP_REFRESH = 2
-local ESP_RANGE = 500
-
 local function updateESP()
     for _, target in ipairs(Players:GetPlayers()) do
         if target == player then continue end
@@ -417,6 +278,143 @@ local function disableESP()
     roleMemory = {}
 end
 
+-- ===== MENU =====
+local function createMenu()
+    if menuGui then return end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KapitanBombaMenu"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("CoreGui")
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "MenuFrame"
+    frame.Size = UDim2.new(0, 240, 0, 200)
+    frame.Position = UDim2.new(0.5, -120, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    frame.BackgroundTransparency = 0.15
+    frame.BorderSizePixel = 0
+    frame.Visible = false
+    frame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.3
+    stroke.Parent = frame
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 32)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🔥 KapitanBomba HACK"
+    title.TextColor3 = Color3.fromRGB(255, 0, 0)
+    title.TextSize = 16
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 28, 0, 28)
+    closeBtn.Position = UDim2.new(1, -32, 0, 2)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = frame
+    closeBtn.Activated:Connect(function()
+        toggleMenu()
+    end)
+    
+    local function createToggle(parent, text, yPos, getState, setState)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, -20, 0, 36)
+        row.Position = UDim2.new(0, 10, 0, yPos)
+        row.BackgroundTransparency = 1
+        row.Parent = parent
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.5, 0, 1, 0)
+        label.Position = UDim2.new(0, 0, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextSize = 15
+        label.Font = Enum.Font.GothamBold
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = row
+        
+        local toggleBtn = Instance.new("TextButton")
+        toggleBtn.Size = UDim2.new(0, 70, 0, 28)
+        toggleBtn.Position = UDim2.new(1, -80, 0.5, -14)
+        toggleBtn.BackgroundColor3 = getState() and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        toggleBtn.Text = getState() and "ON" or "OFF"
+        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggleBtn.TextSize = 13
+        toggleBtn.Font = Enum.Font.GothamBold
+        toggleBtn.Parent = row
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = toggleBtn
+        
+        toggleBtn.Activated:Connect(function()
+            local newState = not getState()
+            setState(newState)
+            toggleBtn.BackgroundColor3 = newState and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+            toggleBtn.Text = newState and "ON" or "OFF"
+        end)
+        
+        return row
+    end
+    
+    createToggle(frame, "Fly", 38, function() return flying end, function(val)
+        if val then
+            if not flying then startFly() end
+        else
+            if flying then stopFly() end
+        end
+    end)
+    
+    createToggle(frame, "Noclip", 78, function() return noclip end, function(val)
+        if val then
+            if not noclip then toggleNoclip() end
+        else
+            if noclip then toggleNoclip() end
+        end
+    end)
+    
+    createToggle(frame, "ESP", 118, function() return espEnabled end, function(val)
+        if val then
+            if not espEnabled then enableESP() end
+        else
+            if espEnabled then disableESP() end
+        end
+    end)
+    
+    menuGui = {
+        Frame = frame,
+        ScreenGui = screenGui
+    }
+end
+
+local function toggleMenu()
+    if not menuGui then
+        createMenu()
+    end
+    menuOpen = not menuOpen
+    menuGui.Frame.Visible = menuOpen
+    if menuOpen then
+        print("[MENU] Otwarto")
+    else
+        print("[MENU] Zamknięto")
+    end
+end
+
 -- ===== KLAWISZ K =====
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
@@ -454,6 +452,7 @@ end)
 
 -- ===== START =====
 createWatermark()
+createMenu()
 
 print("=== MENU ZAŁADOWANE ===")
 print("Naciśnij K, aby otworzyć/zamknąć menu")
