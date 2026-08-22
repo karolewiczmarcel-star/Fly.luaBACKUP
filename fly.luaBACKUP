@@ -1,12 +1,7 @@
 --[[
-    IRIS MENU – FLY (X) + NOCLIP (Z) + ESP (C) + RAINBOW COLORS
+    FLY (X) + NOCLIP (Z) + ESP (C) + AUTO PISTOL (V) + WATERMARK
 ]]
 
--- ===== ZAŁADOWANIE IRIS =====
-local Iris = loadstring(game:HttpGet("https://raw.githubusercontent.com/paradoxum-games/iris/main/out.lua"))()
-Iris:Init()
-
--- ===== STANY =====
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
@@ -15,26 +10,77 @@ local camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
--- ===== FLY =====
+-- ===== WATERMARK =====
+local function createWatermark()
+    if CoreGui:FindFirstChild("KapitanBombaWatermark") then
+        return
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KapitanBombaWatermark"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "WatermarkFrame"
+    frame.Size = UDim2.new(0, 420, 0, 60)
+    frame.Position = UDim2.new(1, -430, 0, 2)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 0, 0)
+    stroke.Thickness = 3
+    stroke.Transparency = 0.15
+    stroke.Parent = frame
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "WatermarkLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "🔥 KapitanBomba HACK 🔥"
+    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    textLabel.TextSize = 34
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.2
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.TextYAlignment = Enum.TextYAlignment.Center
+    textLabel.Parent = frame
+    
+    -- Efekt pulsowania
+    game:GetService("TweenService"):Create(textLabel, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        TextTransparency = 0.05
+    }):Play()
+    
+    game:GetService("TweenService"):Create(stroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Transparency = 0.02
+    }):Play()
+    
+    print("[WATERMARK] KapitanBomba HACK dodany")
+end
+
+-- ===== STANY =====
 local flying = false
 local flyCon = nil
 local flySpeed = 50
 
--- ===== NOCLIP =====
 local noclip = false
 local noclipCon = nil
 
--- ===== ESP =====
 local espEnabled = false
 local espCon = nil
 local espCache = {}
 local ESP_REFRESH = 0.5
 local ESP_RANGE = 500
-
--- ===== IRIS STANY =====
-local menuVisible = Iris.State(true)
-local hue = 0
 
 -- ===== FLY =====
 local function startFly()
@@ -228,76 +274,58 @@ local function disableESP()
     espCache = {}
 end
 
--- ===== IRIS MENU Z RAINBOW =====
-local function createIrisMenu()
-    -- Ukryj domyślny kursor
-    UserInputService.MouseIconEnabled = false
+-- ===== AUTO PISTOL (V) =====
+local function autoPickupGun()
+    -- Szukamy pistoletów na mapie (Tool w Workspace)
+    local guns = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") then
+            local name = obj.Name:lower()
+            if name:find("gun") or name:find("pistol") or name:find("revolver") or name:find("rifle") or name:find("shotgun") or name:find("sniper") then
+                table.insert(guns, obj)
+            end
+        end
+    end
     
-    Iris:Connect(function()
-        -- Generowanie koloru (zmiana co sekundę)
-        hue = (hue + 0.016) % 1 -- 1/60 ≈ 0.016
-        local rainbowColor = Color3.fromHSV(hue, 1, 1)
-        
-        -- Główne okno
-        Iris.Window({ "KapitanBomba HACK" }, { 
-            size = Iris.State(Vector2.new(300, 350)),
-            position = Iris.State(Vector2.new(100, 100))
-        })
-        
-        -- Tytuł z rainbow
-        Iris.Text({ "⚡ STEERING ⚡" })
-        Iris.Separator()
-        
-        -- FLY
-        local flyState = Iris.State(flying)
-        Iris.Checkbox({ "Fly (X)", flyState })
-        if flyState:get() ~= flying then
-            if flyState:get() then
-                startFly()
-            else
-                stopFly()
-            end
+    if #guns == 0 then
+        print("[PISTOL] Brak pistoletów na mapie!")
+        return
+    end
+    
+    -- Znajdź najbliższy pistolet
+    local closestGun = nil
+    local closestDist = math.huge
+    local myPos = rootPart.Position
+    
+    for _, gun in ipairs(guns) do
+        local gunPos = gun:FindFirstChild("Handle") and gun.Handle.Position or gun.Position
+        local dist = (gunPos - myPos).Magnitude
+        if dist < closestDist then
+            closestDist = dist
+            closestGun = gun
         end
-        
-        -- NOCLIP
-        local noclipState = Iris.State(noclip)
-        Iris.Checkbox({ "Noclip (Z)", noclipState })
-        if noclipState:get() ~= noclip then
-            toggleNoclip()
-        end
-        
-        -- ESP
-        local espState = Iris.State(espEnabled)
-        Iris.Checkbox({ "ESP (C)", espState })
-        if espState:get() ~= espEnabled then
-            if espState:get() then
-                enableESP()
-            else
-                disableESP()
-            end
-        end
-        
-        Iris.Separator()
-        
-        -- Status z rainbow
-        Iris.Text({ "STATUS:" })
-        Iris.Text({ "Fly: " .. (flying and "✅ ON" or "❌ OFF") })
-        Iris.Text({ "Noclip: " .. (noclip and "✅ ON" or "❌ OFF") })
-        Iris.Text({ "ESP: " .. (espEnabled and "✅ ON" or "❌ OFF") })
-        
-        Iris.Separator()
-        
-        -- Przycisk wyjścia z rainbow
-        local exitBtn = Iris.Button({ "❌ WYJDŹ" })
-        if exitBtn then
-            menuVisible:set(false)
-        end
-        
-        Iris.End()
-        
-        -- Zmiana koloru co sekundę (w tle)
+    end
+    
+    if closestGun then
+        -- Przenieś się do pistoletu i podnieś go
+        local gunPos = closestGun:FindFirstChild("Handle") and closestGun.Handle.Position or closestGun.Position
+        rootPart.CFrame = CFrame.new(gunPos + Vector3.new(0, 2, 0))
         task.wait(0.1)
-    end)
+        
+        -- Próba podniesienia (symulacja dotknięcia)
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local touchEvent = Instance.new("TouchTransmitter")
+            touchEvent.Parent = closestGun
+            touchEvent:Fire(humanoidRootPart)
+            task.wait(0.1)
+            touchEvent:Destroy()
+        end
+        
+        print("[PISTOL] Podniesiono: " .. closestGun.Name)
+    else
+        print("[PISTOL] Nie znaleziono pistoletu")
+    end
 end
 
 -- ===== KLAWISZE =====
@@ -305,7 +333,11 @@ UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     
     if input.KeyCode == Enum.KeyCode.X then
-        if flying then stopFly() else startFly() end
+        if flying then
+            stopFly()
+        else
+            startFly()
+        end
     end
     
     if input.KeyCode == Enum.KeyCode.Z then
@@ -313,11 +345,15 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
     
     if input.KeyCode == Enum.KeyCode.C then
-        if espEnabled then disableESP() else enableESP() end
+        if espEnabled then
+            disableESP()
+        else
+            enableESP()
+        end
     end
     
-    if input.KeyCode == Enum.KeyCode.J then
-        menuVisible:set(not menuVisible:get())
+    if input.KeyCode == Enum.KeyCode.V then
+        autoPickupGun()
     end
 end)
 
@@ -348,9 +384,9 @@ player.CharacterAdded:Connect(function(newChar)
 end)
 
 -- ===== START =====
-createIrisMenu()
+createWatermark()
 
-print("=== IRIS MENU ZAŁADOWANE ===")
-print("X = FLY | Z = NOCLIP | C = ESP")
-print("J = pokaż/ukryj menu")
-print("🌈 Kolory zmieniają się co sekundę!")
+print("=== SKRYPT ZAŁADOWANY ===")
+print("X = FLY | Z = NOCLIP | C = ESP | V = AUTO PISTOL")
+print("W/S/A/D = latanie (gdy Fly włączone)")
+print("WATERMARK: KapitanBomba HACK (prawy górny róg)")
